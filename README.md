@@ -26,6 +26,7 @@ The Ruby script must define the three constants Name, Main and Version.
 The main class must inherit from RubyPlugin.
 
 Example:
+
     class ThePlugin < RubyPlugin
         def onEnable; printf "ThePlugin enabled."; end
         def onDisable; printf "ThePlugin disabled."; end
