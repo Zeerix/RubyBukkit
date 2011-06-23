@@ -1,0 +1,4 @@
+name: RubyBukkit
+main: org.notbukkit.RubyBukkit
+author: Zeerix
+version: 0.2
