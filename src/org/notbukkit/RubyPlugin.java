@@ -14,7 +14,7 @@ import org.jruby.embed.ScriptingContainer;
 
 import com.avaje.ebean.EbeanServer;
 
-public /*abstract*/ class RubyPlugin implements Plugin {
+public class RubyPlugin implements Plugin {
     private boolean isEnabled = false;
     private boolean initialized = false;
     private PluginLoader loader;
@@ -28,7 +28,7 @@ public /*abstract*/ class RubyPlugin implements Plugin {
     
     public RubyPlugin() {}
     
-    protected void initialize(PluginLoader loader, Server server, PluginDescriptionFile description,
+    protected final void initialize(PluginLoader loader, Server server, PluginDescriptionFile description,
             File dataFolder, File file, ScriptingContainer runtime) {
         if (!initialized) {
             this.initialized = true;
@@ -41,7 +41,7 @@ public /*abstract*/ class RubyPlugin implements Plugin {
         }
     }
     
-    protected ScriptingContainer getRuntime() {
+    protected final ScriptingContainer getRuntime() {
         return runtime;
     }    
     
@@ -56,16 +56,20 @@ public /*abstract*/ class RubyPlugin implements Plugin {
     public EbeanServer getDatabase() {
         return null;
     }
+    
+    protected File getFile() {
+        return pluginFile;
+    }
 
     public PluginDescriptionFile getDescription() {
         return description;
     }
 
-    public PluginLoader getPluginLoader() {
+    public final PluginLoader getPluginLoader() {
         return loader;
     }
 
-    public Server getServer() {
+    public final Server getServer() {
         return server;
     }
     
@@ -74,15 +78,15 @@ public /*abstract*/ class RubyPlugin implements Plugin {
         return null;
     }
     
-    public boolean isNaggable() {
+    public final boolean isNaggable() {
         return naggable;
     }
     
-    public void setNaggable(boolean canNag) {
+    public final void setNaggable(boolean canNag) {
         naggable = canNag;
     }
 
-    protected void setEnabled(final boolean enabled) {
+    protected final void setEnabled(final boolean enabled) {
         if (isEnabled != enabled) {
             isEnabled = enabled;
 
@@ -94,17 +98,17 @@ public /*abstract*/ class RubyPlugin implements Plugin {
         }
     }
     
-    public boolean isEnabled() {
+    public final boolean isEnabled() {
         return isEnabled;
     }
 
-    public void onDisable() {
+    public void onLoad() {
     }
 
     public void onEnable() {
     }
-
-    public void onLoad() {
+        
+    public void onDisable() {
     }
     
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
