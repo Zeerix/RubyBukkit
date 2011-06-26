@@ -53,7 +53,7 @@ public class RubyBukkit extends JavaPlugin {
         File jrubyFile = new File(config.getString("runtime.jruby-path", getDataFolder() + File.separator + "jruby.jar"));
         rubyVersion = config.getString("runtime.ruby-version", "1.8");
         
-        File pluginsFolder = new File(config.getString("settings.plugins.path", getFile().getParent()));
+        File pluginsFolder = new File(config.getString("settings.plugins-path", getFile().getParent()));
         debugInfo = config.getBoolean("settings.debug", true);
         config.save();
         

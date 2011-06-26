@@ -66,9 +66,8 @@ public final class RubyPluginLoader implements PluginLoader {
         }     
         
         // create a scripting container for every plugin to encapsulate it
-        ScriptingContainer runtime = new ScriptingContainer(LocalContextScope.CONCURRENT);
+        ScriptingContainer runtime = new ScriptingContainer(LocalContextScope.THREADSAFE);
         runtime.setClassLoader(runtime.getClass().getClassLoader());
-        runtime.setCompileMode(CompileMode.JIT);
         //runtime.setHomeDirectory( "/path/to/home/" );
         
         if (RubyBukkit.rubyVersion.equals("1.9"))
