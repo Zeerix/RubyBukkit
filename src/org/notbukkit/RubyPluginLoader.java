@@ -2,6 +2,12 @@ package org.notbukkit;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.StringReader;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
@@ -13,11 +19,15 @@ import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.plugin.*;
 import org.bukkit.plugin.java.JavaPluginLoader;
 import org.jruby.CompatVersion;
+import org.jruby.RubyHash;
 import org.jruby.RubyInstanceConfig.CompileMode;
+import org.jruby.RubySymbol;
 import org.jruby.embed.EmbedEvalUnit;
 import org.jruby.embed.LocalContextScope;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 public final class RubyPluginLoader implements PluginLoader {
     
@@ -99,34 +109,52 @@ public final class RubyPluginLoader implements PluginLoader {
      * extract description from Ruby script 
      */
     private PluginDescriptionFile getDescriptionFile(ScriptingContainer runtime) throws InvalidDescriptionException {
-        String name;
-        try {
-            name = runtime.get("Name").toString();
-        } catch (Exception e) {
-            throw new InvalidDescriptionException(e, "name is not defined");
-        }
-        if (!name.matches("^[A-Za-z0-9 _.-]+$")) {
-            throw new InvalidDescriptionException("name '" + name + "' contains invalid characters.");        
-        }
+        final Map<String, Object> map = new HashMap<String, Object>();
+        map.put("name", convertFromRuby(runtime.get("Name")));
+        map.put("main", convertFromRuby(runtime.get("Main")));
+        map.put("version", convertFromRuby(runtime.get("Version")));
+        map.put("author", convertFromRuby(runtime.get("Author")));
+        map.put("website", convertFromRuby(runtime.get("Website")));
+        map.put("description", convertFromRuby(runtime.get("Description")));
+        map.put("commands", convertFromRuby(runtime.get("Commands")));
         
-        String version;
-        try {
-            version = runtime.get("Version").toString();
-        } catch (Exception e) {
-            throw new InvalidDescriptionException(e, "version is not defined");
-        }            
+        final Yaml yaml = new Yaml(new SafeConstructor());
+        final StringReader reader = new StringReader( yaml.dump(map) );
 
-        String main;
-        try {
-            main = runtime.get("Main").toString();
-        } catch (Exception e) {
-            throw new InvalidDescriptionException(e, "main is not defined");
-        }
+        return new PluginDescriptionFile(reader);
+    }
+    
+    private static Object convertFromRuby(Object object) throws InvalidDescriptionException {
+        if (object == null || object instanceof String)
+            return object;
+        if (object instanceof RubySymbol)
+            return convertFromRuby( ((RubySymbol)object).asJavaString() );
+        if (object instanceof List)
+            return convertFromRuby( (List<Object>)object );
+        if (object instanceof Map)
+            return convertFromRuby( (Map<Object, Object>)object );
         
-        PluginDescriptionFile description = new PluginDescriptionFile(name, version, main);
-        return description;
+        throw new InvalidDescriptionException("Unknown Ruby object: " + object.getClass().getName());
     }
 
+    private static Object convertFromRuby(Map<Object, Object> map) throws InvalidDescriptionException {
+        Map<Object, Object> result = new HashMap<Object, Object>();
+        for (Map.Entry<Object, Object> entry : map.entrySet()) {
+            Object key = convertFromRuby(entry.getKey());
+            Object value = convertFromRuby(entry.getValue());
+            result.put(key, value);
+        }        
+        return result;
+    }  
+    
+    private static Object convertFromRuby(List<Object> list) throws InvalidDescriptionException {
+        List<Object> result = new ArrayList<Object>();
+        for (Object entry : list) {
+            result.add(convertFromRuby(entry));
+        }        
+        return result;
+    }   
+    
     public Pattern[] getPluginFileFilters() {
         return fileFilters;
     }    
