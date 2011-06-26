@@ -1,58 +1,49 @@
 # plugin.yml constants
 Name = "OnlinePlayers"
-Version = "0.1"
+Version = "0.2"
 Author = "Zeerix"
 Description = "Displays list of online players on login and by a command"
 Main = Name
 Commands = {
     :list => {
-        :usage => "/list - displays list of online players",
-        :aliases => [ :online ]
+        :usage => "/<command> - displays list of online players",
+        :aliases => [ :players, :online ]
     }
 }
 
 # imports
 import 'org.bukkit.event.Event'
 
-# listeners
-class PlayerListener < org.bukkit.event.player.PlayerListener
-    def plugin=(plugin)
-        @plugin = plugin
-    end    
-    def onPlayerLogin(event)
-        task = ListPlayers.new @plugin, event.getPlayer
-        @plugin.getServer.getScheduler.scheduleSyncDelayedTask @plugin, task 
-    end
-end
-
-# scheduler task
-class ListPlayers
-    include java.lang.Runnable
-    def initialize(plugin, player)
-        @plugin, @player = plugin, player
-    end
-    def run()
-        players = @plugin.getServer.getOnlinePlayers
-        @player.sendMessage "Players: " + players.map{|player| player.name }.join(", ")
-    end     
-end
-
-# actual plugin class
+# plugin class
 class OnlinePlayers < RubyPlugin
     def onEnable
-        listener = PlayerListener.new
-        listener.plugin = self
-        pm = getServer.getPluginManager
-        pm.registerEvent(Event::Type::PLAYER_LOGIN, listener, Event::Priority::Normal, self)
-    
-        printf "OnlinePlayers enabled!"
+        registerEvents
+        printf "OnlinePlayers enabled."
     end
     def onDisable
-        printf "OnlinePlayers disabled!"
+        printf "OnlinePlayers disabled."
+    end
+    
+    def registerEvents
+        registerEvent(Event::Type::PLAYER_LOGIN, Event::Priority::Normal) {
+            |loginEvent|
+            player = loginEvent.getPlayer    
+            scheduleSyncTask { listPlayersTo player }
+        }
     end
     
     def onCommand(sender, command, label, args)
-        ListPlayers.new(self, sender).run
+        listPlayersTo sender
         true
+    end
+    
+    def listPlayersTo(player)
+        players = getServer.getOnlinePlayers
+        if players.size == 0 then
+            msg = "No players online."
+        else
+            msg = "Players: " + players.map{|player| player.name }.join(", ")
+        end
+        player.sendMessage msg
     end
 end
