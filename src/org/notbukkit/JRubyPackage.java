@@ -16,7 +16,6 @@ import org.bukkit.plugin.java.PluginClassLoader;
  * @author Zeerix
  */
 public final class JRubyPackage extends JavaPlugin {
-    
     protected JRubyPackage(JavaPluginLoader loader, File jrubyFile, Server server, ClassLoader systemLoader) throws MalformedURLException {
         URL[] urls = new URL[]{ jrubyFile.toURI().toURL() };
         PluginClassLoader jrubyClassLoader = new PluginClassLoader(loader, urls, systemLoader);
@@ -25,9 +24,7 @@ public final class JRubyPackage extends JavaPlugin {
         initialize(loader, server, description, null, null, jrubyClassLoader);
     }
     
-    public void onEnable() {
-    }
-    
-    public void onDisable() {
-    }
+    public void onEnable() {}
+
+    public void onDisable() {}
 }

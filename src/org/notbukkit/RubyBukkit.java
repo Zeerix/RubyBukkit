@@ -6,24 +6,17 @@ import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.PluginLoader;
-import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.util.config.Configuration;
 
 /**
- * Ruby plugins for Bukkit
+ * Loads Ruby plugins for Bukkit
  *
  * @author Zeerix
  */
 public class RubyBukkit extends JavaPlugin {
-    
-    // *** referenced classes ***
-    
-    final PluginManager pluginManager = Bukkit.getServer().getPluginManager();
     
     // *** data ***
     
@@ -36,7 +29,7 @@ public class RubyBukkit extends JavaPlugin {
     
     protected static boolean debugInfo;
     protected static String rubyVersion;
-    
+
     // *** public interface ***
     
     public void onLoad() {
@@ -45,7 +38,7 @@ public class RubyBukkit extends JavaPlugin {
     }
     
     public void onEnable() {
-        logInfo("Version " + getDescription().getVersion() + " enabled.");
+        logInfo(getDescription().getFullName() + " enabled.");
 
         // load configuration
         Configuration config = getConfiguration(); 
@@ -73,18 +66,17 @@ public class RubyBukkit extends JavaPlugin {
         }
         
         // register loader for Ruby plugins
-        if (!registerPluginLoader(jrubyFile))
-            return;
+        registerPluginLoader(jrubyFile);
         
         // enumerate Ruby plugin files
         final File[] rubyFiles = getPluginFiles(pluginsFolder);   // get *.rb in plugins/ folder
         
         // load & initialize plugins
-        loadPlugins(rubyFiles);   
+        /*final Plugin[] plugins =*/ loadPlugins(rubyFiles);   
     }
     
     public void onDisable() {
-        logInfo("Version " + getDescription().getVersion() + " disabled.");
+        logInfo(getDescription().getFullName() + " disabled.");
     }
     
     // *** internals ***
@@ -100,7 +92,7 @@ public class RubyBukkit extends JavaPlugin {
     private void logSevere(String msg) { doLog(Level.SEVERE, msg); }    
     private void logSevere(String msg, Throwable e) { doLog(Level.SEVERE, msg, e); }    
     
-    private boolean registerPluginLoader(File jrubyFile) {
+    private void registerPluginLoader(File jrubyFile) {
         if (!loaderRegistered) {
             try {
                 // load jruby.jar as pseudo-plugin, so all plugins and ruby-script can access its classes
@@ -110,16 +102,12 @@ public class RubyBukkit extends JavaPlugin {
                 pluginLoader.enablePlugin(jrubyPackage);
                 
                 // register RubyPluginLoader in Bukkit
-                String loaderClassName = getClass().getPackage().getName() + ".RubyPluginLoader";
-                Class<? extends PluginLoader> loader = Class.forName(loaderClassName).asSubclass(PluginLoader.class);
-                
-                pluginManager.registerInterface(loader);
+                getServer().getPluginManager().registerInterface(RubyPluginLoader.class);
                 loaderRegistered = true;
             } catch (Exception e) {
                 logSevere(e.getMessage() + " registering RubyPluginLoader", e);
             }
         }
-        return loaderRegistered;
     }
     
     private File[] getPluginFiles(File folder) {
@@ -139,12 +127,15 @@ public class RubyBukkit extends JavaPlugin {
         ArrayList<Plugin> plugins = new ArrayList<Plugin>();
         for (File file : files) {
             try {
-                if (debugInfo) {
+                if (debugInfo)
                     logInfo(" - " + file.getName());
-                }
-                plugins.add( pluginManager.loadPlugin(file) );
+                Plugin plugin = getServer().getPluginManager().loadPlugin(file);
+                if (plugin != null)
+                    plugins.add(plugin);
+                else if (debugInfo)
+                    logInfo("   ! Could not load " + file.getName());
             } catch (Exception e) {
-                logSevere(e.getMessage() + " loading " + file.getName(), e); 
+                logSevere("Error loading " + file.getName(), e); 
             }
         }
         
@@ -152,7 +143,7 @@ public class RubyBukkit extends JavaPlugin {
             try {
                 plugin.onLoad();
             } catch (Exception e) {
-                logSevere(e.getMessage() + " initializing " + plugin.getDescription().getFullName(), e); 
+                logSevere("Error initializing " + plugin.getDescription().getFullName(), e); 
             }
         }
         

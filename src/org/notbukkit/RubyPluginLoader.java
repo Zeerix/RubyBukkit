@@ -2,8 +2,9 @@ package org.notbukkit;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,8 +20,6 @@ import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.plugin.*;
 import org.bukkit.plugin.java.JavaPluginLoader;
 import org.jruby.CompatVersion;
-import org.jruby.RubyHash;
-import org.jruby.RubyInstanceConfig.CompileMode;
 import org.jruby.RubySymbol;
 import org.jruby.embed.EmbedEvalUnit;
 import org.jruby.embed.LocalContextScope;
@@ -29,6 +28,15 @@ import org.jruby.embed.ScriptingContainer;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
+/**
+ * Loader for Ruby plugins; will be registered in PluginManager.
+ *
+ * Info about JRuby:
+ *  - Embedding: http://kenai.com/projects/jruby/pages/DirectJRubyEmbedding
+ *  - YAML & co: http://kenai.com/projects/jruby/pages/AccessingJRubyObjectInJava
+ *
+ * @author Zeerix
+ */
 public final class RubyPluginLoader implements PluginLoader {
     
     // *** referenced classes ***
@@ -37,32 +45,19 @@ public final class RubyPluginLoader implements PluginLoader {
     private final Server server;
 
     // *** data ***
-    // Embedding: http://kenai.com/projects/jruby/pages/DirectJRubyEmbedding
-    // YAML & co: http://kenai.com/projects/jruby/pages/AccessingJRubyObjectInJava
     
     private final Pattern[] fileFilters = new Pattern[] {
         Pattern.compile("\\.rb$"),
     };
 
-    private final String packageName = getClass().getPackage().getName();
-
-    // pre-script to make it easier for plugin authors
-    private final String preScript =
-        "require 'java'\n" +
-        "import '" + packageName + ".RubyPlugin'\n";
-    
-    // Ruby script to check and create an instance of the main plugin class 
-    private final String instanceScript =
-        "if defined?(className) == 'constant' and className.class == Class then\n" +
-        "    className.new\n" +
-        "else\n" +
-        "    raise 'main class not defined: className'\n" +
-        "end\n";
+    // script files
+    private final String initScript = "/ruby/init-plugin.rb"; 
+    private final String createScript = "/ruby/new-plugin.rb"; 
     
     // *** interface ***
     
-    public RubyPluginLoader(Server instance) {
-        server = instance;
+    public RubyPluginLoader(Server server) {
+        this.server = server;
         javaPluginLoader = new JavaPluginLoader(server);
     }
     
@@ -76,7 +71,7 @@ public final class RubyPluginLoader implements PluginLoader {
         }     
         
         // create a scripting container for every plugin to encapsulate it
-        ScriptingContainer runtime = new ScriptingContainer(LocalContextScope.THREADSAFE);
+        ScriptingContainer runtime = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
         runtime.setClassLoader(runtime.getClass().getClassLoader());
         //runtime.setHomeDirectory( "/path/to/home/" );
         
@@ -84,44 +79,56 @@ public final class RubyPluginLoader implements PluginLoader {
             runtime.setCompatVersion(CompatVersion.RUBY1_9);
         
         try {
-            // parse and run script
-            runtime.runScriptlet(preScript);
+            // run init script
+            runResourceScript(runtime, initScript);
             
             final EmbedEvalUnit eval = runtime.parse(PathType.RELATIVE, file.getPath());
             /*IRubyObject res =*/ eval.run();
     
             // create plugin description
             final PluginDescriptionFile description = getDescriptionFile(runtime);
-            final File dataFolder = new File(file.getParentFile(), description.getName());
-        
-            // create main plugin class
-            final String script = instanceScript.replaceAll("className", description.getMain());
+            if (description == null)
+                return null;    // silent fail if the script doesn't contain a plugin description
             
-            final RubyPlugin plugin = (RubyPlugin)runtime.runScriptlet(script);     // create instance of main class
+            final File dataFolder = new File(file.getParentFile(), description.getName());
+            
+            // create instance of main class
+            RubyPlugin plugin = (RubyPlugin)runResourceScript(runtime, createScript);
             plugin.initialize(this, server, description, dataFolder, file, runtime);
             return plugin;
-        } catch (Throwable ex) {
-            throw new InvalidPluginException(ex);
+        } catch (InvalidDescriptionException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InvalidPluginException(e);
         }
     }
     
     /**
-     * extract description from Ruby script 
+     * execute Ruby script from resource (embedded in .jar) 
+     */
+    private Object runResourceScript(ScriptingContainer runtime, String filename) throws IOException {
+        InputStream script = getClass().getResourceAsStream(filename);
+        if (script == null)
+            throw new FileNotFoundException(filename);
+        try {
+            return runtime.runScriptlet(script, filename);
+        } finally {
+            script.close();
+        }        
+    }
+    
+    /**
+     * extract description from Ruby script
+     * "Plugin.getDescription" will return our map 
      */
     private PluginDescriptionFile getDescriptionFile(ScriptingContainer runtime) throws InvalidDescriptionException {
-        final Map<String, Object> map = new HashMap<String, Object>();
-        map.put("name", convertFromRuby(runtime.get("Name")));
-        map.put("main", convertFromRuby(runtime.get("Main")));
-        map.put("version", convertFromRuby(runtime.get("Version")));
-        map.put("author", convertFromRuby(runtime.get("Author")));
-        map.put("website", convertFromRuby(runtime.get("Website")));
-        map.put("description", convertFromRuby(runtime.get("Description")));
-        map.put("commands", convertFromRuby(runtime.get("Commands")));
-        
-        final Yaml yaml = new Yaml(new SafeConstructor());
-        final StringReader reader = new StringReader( yaml.dump(map) );
-
-        return new PluginDescriptionFile(reader);
+        Object desc = convertFromRuby(runtime.runScriptlet("Plugin.getDescription"));
+        if (desc instanceof Map) {
+            final Yaml yaml = new Yaml(new SafeConstructor());
+            final StringReader reader = new StringReader( yaml.dump(desc) );
+            return new PluginDescriptionFile(reader);
+        }
+        return null;
     }
     
     private static Object convertFromRuby(Object object) throws InvalidDescriptionException {
@@ -160,7 +167,7 @@ public final class RubyPluginLoader implements PluginLoader {
     }    
 
     public EventExecutor createExecutor(Event.Type type, Listener listener) {
-        return javaPluginLoader.createExecutor(type, listener);
+        return javaPluginLoader.createExecutor(type, listener);     // delegate
     }
 
     public void enablePlugin(Plugin plugin) {

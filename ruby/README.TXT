@@ -1,0 +1,1 @@
+These script are internally used by the RubyBukkit plugin.

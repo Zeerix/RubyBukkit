@@ -119,7 +119,7 @@ public class RubyPlugin implements Plugin {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         return false;
     }
-   
+    
     /*
      * Ruby convenience methods: Registering events
      * 
