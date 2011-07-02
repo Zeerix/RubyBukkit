@@ -21,17 +21,23 @@ Plugins
 -------
 
 Any files in plugins/ with the extension .rb will be loaded as Ruby plugin.
-The Ruby script must define the three constants Name, Main and Version.
-'Name' is the name of the plugin, while 'Main' is the name of the main plugin class.
+
+The Ruby script must call 'Plugin.is' with a block that calls the methods
+'name' and 'version' with appropriate string values, similar to how plugin.yml
+works for Java plugins. The value 'main', which defaults to the same as 'name',
+must be the name of the main plugin class.
+
 The main class must inherit from RubyPlugin.
 
 Example:
 
-    class ThePlugin < RubyPlugin
-        def onEnable; printf "ThePlugin enabled."; end
-        def onDisable; printf "ThePlugin disabled."; end
-    end
+    Plugin.is {
+        name "ThePlugin"
+        version "0.1"
+        author "TheAuthor"
+    }
     
-    Name = "ThePlugin"
-    Main = "ThePlugin"
-    Version = "0.1"
+    class ThePlugin < RubyPlugin
+        def onEnable; print "ThePlugin enabled."; end
+        def onDisable; print "ThePlugin disabled."; end
+    end
