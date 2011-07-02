@@ -1,12 +1,13 @@
-# plugin.yml constants
-Name = "OnlinePlayers"
-Version = "0.2"
-Author = "Zeerix"
-Description = "Displays list of online players on login and by a command"
-Main = Name
-Commands = {
-    :list => {
-        :usage => "/<command> - displays list of online players",
+# Example plugin to show event handling and commands
+
+Plugin.is {
+    name "OnlinePlayers"
+    version "0.3"
+    author "Zeerix"
+    description "Displays list of online players on login and by a command"
+    commands :list => {
+        :description => "Show online players.",
+        :usage => "/list",
         :aliases => [ :players, :online ]
     }
 }
@@ -18,10 +19,10 @@ import 'org.bukkit.event.Event'
 class OnlinePlayers < RubyPlugin
     def onEnable
         registerEvents
-        printf "OnlinePlayers enabled."
+        print getDescription.getFullName + " enabled."
     end
     def onDisable
-        printf "OnlinePlayers disabled."
+        print getDescription.getFullName + " disabled."
     end
     
     def registerEvents
@@ -37,13 +38,13 @@ class OnlinePlayers < RubyPlugin
         true
     end
     
-    def listPlayersTo(player)
+    def listPlayersTo(sender)
         players = getServer.getOnlinePlayers
         if players.size == 0 then
             msg = "No players online."
         else
             msg = "Players: " + players.map{|player| player.name }.join(", ")
         end
-        player.sendMessage msg
+        sender.sendMessage msg
     end
 end

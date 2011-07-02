@@ -1,14 +1,12 @@
 # This is an example ChunkGenerator plugin for RubyBukkit
 # based on Dinnerbone's BukkitFullOfMoon (https://github.com/Dinnerbone/BukkitFullOfMoon)
 
-# plugin.yml constants
-Name = "RubyMoon"
-Version = "0.1"
-Authors = "Zeerix"
-Description = "Ruby version of the sample custom world generator for Bukkit"
-Main = Name
-Commands = {
-    :moon => {
+Plugin.is {
+    name "RubyMoon"
+    version "0.2"
+    author "Zeerix"
+    description "Ruby version of the example custom world generator for Bukkit"
+    commands :moon => {
         :description => "Sends you to the moon!",
         :usage => "/moon"
     }
@@ -23,11 +21,11 @@ import 'org.bukkit.util.BlockVector'
 import 'org.bukkit.util.Vector'
 
 class MoonCraterPopulator < BlockPopulator 
-    CraterChance = 45 # out of 100
-    MinCraterSize = 3
-    SmallCraterSize = 8
-    BigCraterSize = 16
+    CraterChance    = 45 # out of 100
     BigCraterChance = 10 # out of 100
+    MinCraterSize   = 3
+    SmallCraterSize = 8
+    BigCraterSize   = 16
 
     def populate(world, random, source)
         if random.nextInt(100) <= CraterChance then
@@ -105,9 +103,7 @@ import 'org.bukkit.Location'
 class MoonChunkGenerator < ChunkGenerator 
     
     def getGenerator(world)
-        if @generator == nil then
-            @generator = SimplexNoiseGenerator.new(world)
-        end
+        @generator = SimplexNoiseGenerator.new(world) if @generator == nil
         @generator
     end    
     
@@ -153,8 +149,7 @@ class RubyMoon < RubyPlugin
     WorldName = "BukkitMoon"
     
     def onEnable
-        desc = getDescription
-        print desc.getName + " version " + desc.getVersion + " enabled!"
+        print getDescription.getFullName + " enabled!"
     end
     def onDisable; end
     

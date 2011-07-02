@@ -2,4 +2,4 @@ name: RubyBukkit
 main: org.notbukkit.RubyBukkit
 load: startup
 author: Zeerix
-version: 0.3
+version: 0.4
