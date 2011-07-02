@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,8 +52,8 @@ public final class RubyPluginLoader implements PluginLoader {
     };
 
     // script files
-    private final String initScript = "/ruby/init-plugin.rb"; 
-    private final String createScript = "/ruby/new-plugin.rb"; 
+    private final String initScript = "/rubybukkit/init-plugin.rb"; 
+    private final String createScript = "/rubybukkit/new-plugin.rb"; 
     
     // *** interface ***
     
@@ -73,7 +74,9 @@ public final class RubyPluginLoader implements PluginLoader {
         // create a scripting container for every plugin to encapsulate it
         ScriptingContainer runtime = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
         runtime.setClassLoader(runtime.getClass().getClassLoader());
-        //runtime.setHomeDirectory( "/path/to/home/" );
+        runtime.setHomeDirectory( RubyBukkit.jrubyFile.getAbsoluteFile().getParent() );
+        String[] loadPaths = new String[] { file.getAbsoluteFile().getParent(), RubyBukkit.thisJar.getAbsolutePath() };
+        runtime.setLoadPaths(Arrays.asList(loadPaths));
         
         if (RubyBukkit.rubyVersion.equals("1.9"))
             runtime.setCompatVersion(CompatVersion.RUBY1_9);

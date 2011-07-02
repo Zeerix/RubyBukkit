@@ -27,6 +27,8 @@ public class RubyBukkit extends JavaPlugin {
     
     // *** plugin configuration ***
     
+    protected static File thisJar;
+    protected static File jrubyFile;
     protected static boolean debugInfo;
     protected static String rubyVersion;
 
@@ -39,11 +41,14 @@ public class RubyBukkit extends JavaPlugin {
     
     public void onEnable() {
         logInfo(getDescription().getFullName() + " enabled.");
+        
+        // store jar path for plugin loader
+        thisJar = this.getFile();
 
         // load configuration
         Configuration config = getConfiguration(); 
         config.load();
-        File jrubyFile = new File(config.getString("runtime.jruby-path", getDataFolder() + File.separator + "jruby.jar"));
+        jrubyFile = new File(config.getString("runtime.jruby-path", getDataFolder() + File.separator + "jruby.jar"));
         rubyVersion = config.getString("runtime.ruby-version", "1.8");
         
         File pluginsFolder = new File(config.getString("settings.plugins-path", getFile().getParent()));
