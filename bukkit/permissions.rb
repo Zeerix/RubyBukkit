@@ -1,25 +1,36 @@
-# Ruby permissions library 0.1
+# Ruby permissions library 0.2
 #
 # Supports: Permissions, PermissionEx, GroupManager
 #
-# Usage: plugin.has(player, "permission.node")
+# Usage:
+#    player.has("permission.node")
+#    - or -
+#    Permissions.playerHas(player, "permissons.node")
 #
 # Setup:
 #    require 'bukkit/permissions'
-#    class MyPlugin < RubyPlugin
-#       include Permissions
-#       def onEnable
-#          setupPermissions
-#          ...
-#       end
-#    end
 #
 # @author Zeerix
 
-class PermissionsHandler
+class Permissions
+    # singleton
+    def self.instance
+        @permissions = Permissions.new if @permissions == nil
+        @permissions     
+    end
+    
+    def self.playerHas(player, perm, default); instance.playerHas(player, perm, default); end
+    def self.plugin; instance.plugin; end
+
+    def self.pluginName
+        plugin.getDescription.getFullName if plugin != nil
+    end
+        
+    # the handler
     attr_reader :plugin
     
-    def initialize(server)
+    def initialize
+        server = org.bukkit.Bukkit.getServer
         gm = server.getPluginManager.getPlugin("GroupManager")    
         pex = server.getPluginManager.getPlugin("PermissionsEx")    
         pm = server.getPluginManager.getPlugin("Permissions")    
@@ -43,20 +54,12 @@ class PermissionsHandler
     end
 end
 
-module Permissions
-    def setupPermissions
-        prefix = "["+getDescription.getName+"] "
-        
-        @permissionsHandler = PermissionsHandler.new(org.bukkit.Bukkit.getServer)
-        plugin = @permissionsHandler.plugin        
-        if plugin != nil then
-            print prefix + "Permissions enabled using: " + plugin.getDescription.getFullName
-        else
-            print prefix + "A permission plugin isn\'t loaded."
-        end
+module PlayerPermissions
+    def has(name, default = false)
+        Permissions.playerHas(self, name, default)    
     end
-    
-    def has(player, perm, default = true)
-        @permissionsHandler.playerHas(player, perm, default)
-    end
-end
+end 
+
+JavaUtilities.extend_proxy("org.bukkit.entity.Player") {
+    include PlayerPermissions
+}

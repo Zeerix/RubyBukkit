@@ -137,6 +137,12 @@ public final class RubyPluginLoader implements PluginLoader {
     private static Object convertFromRuby(Object object) throws InvalidDescriptionException {
         if (object == null || object instanceof String)
             return object;
+        if (object instanceof Boolean)
+            return (boolean)(Boolean)object;
+        if (object instanceof Long)
+            return (long)(Long)object;
+        if (object instanceof Double)
+            return (double)(Double)object;
         if (object instanceof RubySymbol)
             return convertFromRuby( ((RubySymbol)object).asJavaString() );
         if (object instanceof List)
