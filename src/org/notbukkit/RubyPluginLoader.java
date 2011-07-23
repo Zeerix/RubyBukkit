@@ -73,8 +73,8 @@ public final class RubyPluginLoader implements PluginLoader {
         
         // create a scripting container for every plugin to encapsulate it
         ScriptingContainer runtime = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
-        runtime.setClassLoader(runtime.getClass().getClassLoader());
-        runtime.setHomeDirectory( RubyBukkit.jrubyFile.getAbsoluteFile().getParent() );
+        runtime.setClassLoader(this.getClass().getClassLoader());
+        runtime.setHomeDirectory( RubyBukkit.jrubyJar.getAbsoluteFile().getParent() );
         String[] loadPaths = new String[] { file.getAbsoluteFile().getParent(), RubyBukkit.thisJar.getAbsolutePath() };
         runtime.setLoadPaths(Arrays.asList(loadPaths));
         

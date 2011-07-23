@@ -2,13 +2,15 @@ package org.notbukkit;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.util.config.Configuration;
 
 /**
@@ -18,60 +20,57 @@ import org.bukkit.util.config.Configuration;
  */
 public class RubyBukkit extends JavaPlugin {
     
-    // *** data ***
-    
+    // *** logging ***
+
+    private final Level INFO = Level.INFO;
+    private final Level SEVERE = Level.SEVERE;
+
     private Logger log;
     private String logPrefix = "";
 
-    private boolean loaderRegistered;
+    private void log(Level level, String msg, Throwable ex) {
+        log.log(level, logPrefix + msg, ex);
+    }
+    private void log(Level level, String msg) {
+        log.log(level, logPrefix + msg);
+    }
     
     // *** plugin configuration ***
     
     protected static File thisJar;
-    protected static File jrubyFile;
+    protected static File jrubyJar;
     protected static boolean debugInfo;
     protected static String rubyVersion;
 
+    private File pluginsFolder;     // where to load plugins from
+    
     // *** public interface ***
     
     public void onLoad() {
+        // initialize logging
         log = Logger.getLogger(getDescription().getName());
         logPrefix = "[" + getDescription().getName() + "] ";
+
+        // store jar path for plugin loader
+        thisJar = this.getFile();
     }
     
     public void onEnable() {
-        logInfo(getDescription().getFullName() + " enabled.");
+        log(INFO, getDescription().getFullName() + " enabled.");
         
-        // store jar path for plugin loader
-        thisJar = this.getFile();
-
-        // load configuration
-        Configuration config = getConfiguration(); 
-        config.load();
-        jrubyFile = new File(config.getString("runtime.jruby-path", getDataFolder() + File.separator + "jruby.jar"));
-        rubyVersion = config.getString("runtime.ruby-version", "1.8");
+        loadConfig();
         
-        File pluginsFolder = new File(config.getString("settings.plugins-path", getFile().getParent()));
-        debugInfo = config.getBoolean("settings.debug", true);
-        config.save();
-        
-        // sanity checks
-        if (!jrubyFile.exists()) {
-            logSevere("JRuby runtime not found: " + jrubyFile.getPath());
-            return;
-        }        
-        if (!rubyVersion.equals("1.8") && !rubyVersion.equals("1.9")) {
-            logSevere("Invalid Ruby version \"" + rubyVersion + "\". Possible values are \"1.8\" and \"1.9\".");
-            return;
-        }
-        
+        // debug output
         if (debugInfo) {        
-            logInfo("Using JRuby runtime " + jrubyFile.getPath());
-            logInfo("Ruby version set to " + rubyVersion);
+            log(INFO, "Ruby version set to " + rubyVersion);
         }
-        
-        // register loader for Ruby plugins
-        registerPluginLoader(jrubyFile);
+
+        // register runtime and loader for Ruby plugins
+        if (!registerJRubyJar(jrubyJar)) {
+            disableSelf();
+            return;
+        }
+        registerPluginLoader();
         
         // enumerate Ruby plugin files
         final File[] rubyFiles = getPluginFiles(pluginsFolder);   // get *.rb in plugins/ folder
@@ -81,37 +80,77 @@ public class RubyBukkit extends JavaPlugin {
     }
     
     public void onDisable() {
-        logInfo(getDescription().getFullName() + " disabled.");
+        log(INFO, getDescription().getFullName() + " disabled.");
+    }
+
+    // *** configuration ***
+    
+    private void loadConfig() {
+        // load configuration
+        Configuration config = getConfiguration(); 
+        config.load();
+
+        // Ruby version
+        rubyVersion = config.getString("runtime.ruby-version", "1.8");
+        if (!rubyVersion.equals("1.8") && !rubyVersion.equals("1.9")) {
+            log(SEVERE, "Invalid Ruby version \"" + rubyVersion + "\". Possible values are \"1.8\" and \"1.9\".");
+            config.setProperty("runtime.ruby-version", rubyVersion = "1.8");
+        }
+        
+        // JRuby runtime
+        jrubyJar = new File(config.getString("runtime.jruby-path", getDataFolder() + File.separator + "jruby.jar"));
+        
+        // plugin search path        
+        pluginsFolder = new File(config.getString("settings.plugins-path", getDataFolder().getPath()));
+        debugInfo = config.getBoolean("settings.debug", true);
+        config.save();
     }
     
     // *** internals ***
+    
+    private void disableSelf() {
+        getServer().getPluginManager().disablePlugin(this);
+    }    
+    
+    private boolean registerJRubyJar(File jrubyFile) {
+        try {
+            // sanity checks
+            if (!jrubyFile.exists()) {
+                log(SEVERE, "JRuby runtime not found: " + jrubyFile.getPath());
+                return false;
+            }              
+            
+            URL jrubyURL = jrubyFile.toURI().toURL();
+            
+            URLClassLoader syscl = (URLClassLoader)ClassLoader.getSystemClassLoader();
+            URL[] urls = syscl.getURLs();
+            for (URL url : urls)
+                if (url.sameFile(jrubyURL)) {
+                    log(INFO, "Using present JRuby.jar from the classpath.");
+                    return true;
+                }
 
-    private void doLog(Level level, String msg, Throwable ex) {
-        log.log(level, logPrefix + msg, ex);
-    }
-    private void doLog(Level level, String msg) {
-        log.log(level, logPrefix + msg);
+            // URLClassLoader.addUrl is protected
+            Method addURL = URLClassLoader.class.getDeclaredMethod("addURL", new Class[]{ URL.class });
+            addURL.setAccessible(true);
+
+            // add jruby.jar to Bukkit's class path
+            addURL.invoke(syscl, new Object[]{ jrubyURL });
+            
+            log(INFO, "Using JRuby runtime " + jrubyFile.getPath());
+            return true;            
+        } catch (Exception e) {
+            log(SEVERE, e.getMessage() + " while adding JRuby.jar to the classpath", e);
+            return false;
+        }
     }
     
-    private void logInfo(String msg) { doLog(Level.INFO, msg); }    
-    private void logSevere(String msg) { doLog(Level.SEVERE, msg); }    
-    private void logSevere(String msg, Throwable e) { doLog(Level.SEVERE, msg, e); }    
-    
-    private void registerPluginLoader(File jrubyFile) {
-        if (!loaderRegistered) {
-            try {
-                // load jruby.jar as pseudo-plugin, so all plugins and ruby-script can access its classes
-                JavaPluginLoader pluginLoader = (JavaPluginLoader)getPluginLoader();
-                
-                JRubyPackage jrubyPackage = new JRubyPackage(pluginLoader, jrubyFile, getServer(), getClassLoader().getParent());
-                pluginLoader.enablePlugin(jrubyPackage);
-                
-                // register RubyPluginLoader in Bukkit
-                getServer().getPluginManager().registerInterface(RubyPluginLoader.class);
-                loaderRegistered = true;
-            } catch (Exception e) {
-                logSevere(e.getMessage() + " registering RubyPluginLoader", e);
-            }
+    private void registerPluginLoader() {
+        try {
+            // register RubyPluginLoader in Bukkit
+            getServer().getPluginManager().registerInterface(RubyPluginLoader.class);
+        } catch (Exception e) {
+            log(SEVERE, e.getMessage() + " while registering RubyPluginLoader", e);
         }
     }
     
@@ -126,21 +165,21 @@ public class RubyBukkit extends JavaPlugin {
     
     private Plugin[] loadPlugins(File[] files) {
         if (debugInfo) {        
-            logInfo(files.length == 0 ? "No Ruby plugins found." : "Loading Ruby plugins...");
+            log(INFO, files.length == 0 ? "No Ruby plugins found." : "Loading Ruby plugins...");
         }
         
         ArrayList<Plugin> plugins = new ArrayList<Plugin>();
         for (File file : files) {
             try {
                 if (debugInfo)
-                    logInfo(" - " + file.getName());
+                    log(INFO, " - " + file.getName());
                 Plugin plugin = getServer().getPluginManager().loadPlugin(file);
                 if (plugin != null)
                     plugins.add(plugin);
                 else if (debugInfo)
-                    logInfo("   ! Could not load " + file.getName());
+                    log(INFO, "   ! Could not load " + file.getName());
             } catch (Exception e) {
-                logSevere("Error loading " + file.getName(), e); 
+                log(SEVERE, "Error loading " + file.getName(), e); 
             }
         }
         
@@ -148,7 +187,7 @@ public class RubyBukkit extends JavaPlugin {
             try {
                 plugin.onLoad();
             } catch (Exception e) {
-                logSevere("Error initializing " + plugin.getDescription().getFullName(), e); 
+                log(SEVERE, "Error initializing " + plugin.getDescription().getFullName(), e); 
             }
         }
         
