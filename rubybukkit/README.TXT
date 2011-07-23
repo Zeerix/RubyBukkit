@@ -1,1 +1,1 @@
-These script are internally used by the RubyBukkit plugin.
+These scripts are internally used by the RubyBukkit plugin.
