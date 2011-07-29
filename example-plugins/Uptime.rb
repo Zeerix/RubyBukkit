@@ -2,7 +2,7 @@
 
 Plugin.is {
     name "Uptime"
-    version "0.1"
+    version "0.2"
     author "Zeerix"
     commands :uptime => {
         :usage => "/uptime - display time since server start or reload"
@@ -10,7 +10,7 @@ Plugin.is {
 }
 
 # use permission provider
-require 'bukkit/permissions'
+require 'lib/permissions'
 
 # plugin class
 class Uptime < RubyPlugin

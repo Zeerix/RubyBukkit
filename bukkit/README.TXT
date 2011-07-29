@@ -1,1 +1,1 @@
-These scripts are Ruby libraries for plugins.
+Legacy folder for Ruby libraries.
