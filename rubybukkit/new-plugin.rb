@@ -1,6 +1,8 @@
 # RubyBukkit plugin instance script.
 # Executed to create an instance of the plugin class
 #
+# This is loaded directly from the RubyBukkit.jar
+#
 # @author Zeerix
 
 # raise error if :main is not defined

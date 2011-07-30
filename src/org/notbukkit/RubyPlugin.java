@@ -41,6 +41,9 @@ public class RubyPlugin implements Plugin {
             this.dataFolder = dataFolder;
             this.pluginFile = file;
             this.runtime = runtime;
+            
+            this.config = new Configuration(new File(dataFolder, "config.yml"));
+            this.config.load();
         }
     }
     
@@ -142,7 +145,7 @@ public class RubyPlugin implements Plugin {
         }
     }
     
-    public void registerEvent(Event.Type type, Event.Priority priority, RubyListener listener) {
+    protected void registerRubyBlock(Event.Type type, Event.Priority priority, RubyListener listener) {
         getServer().getPluginManager().registerEvent(type, listener, new RubyExecutor(), priority, this);
     }
     

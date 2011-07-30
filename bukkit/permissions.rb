@@ -8,7 +8,7 @@
 #    Permissions.playerHas(player, "permissons.node")
 #
 # Setup:
-#    require 'bukkit/permissions'
+#    require 'lib/permissions'
 #
 # @author Zeerix
 
