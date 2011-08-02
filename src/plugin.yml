@@ -4,4 +4,4 @@ load: startup
 author: Zeerix
 website: http://forums.bukkit.org/threads/RubyBukkit.24899/
 description: Loads plugins made in Ruby
-version: 0.4.3
+version: 0.4.4
