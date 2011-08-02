@@ -17,8 +17,8 @@ class RubyPlugin
         type = type.to_s if type.is_a?(Symbol)
         prio = prio.to_s if prio.is_a?(Symbol)
         
-        type = matchToEnum(type, Event::Type) if type.is_a?(String)
-        prio = matchToEnum(prio, Event::Priority) if prio.is_a?(String)
+        type = matchToEnum(type, org.bukkit.event.Event::Type) if type.is_a?(String)
+        prio = matchToEnum(prio, org.bukkit.event.Event::Priority) if prio.is_a?(String)
 
         registerRubyBlock(type, prio, &listener)
     end
