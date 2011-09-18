@@ -2,19 +2,24 @@ package org.notbukkit;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.config.Configuration;
+import org.jruby.RubyInstanceConfig.CompileMode;
+import org.jruby.embed.LocalContextScope;
+import org.jruby.embed.ScriptingContainer;
 
 /**
- * Loads Ruby plugins for Bukkit
+ * This is the Bukkit plugin that adds support for Ruby plugins
  *
  * @author Zeerix
  */
@@ -41,6 +46,7 @@ public class RubyBukkit extends JavaPlugin {
     protected static File jrubyJar;
     protected static boolean debugInfo;
     protected static String rubyVersion;
+    public static ScriptingContainer container;
 
     private File pluginsFolder;     // where to load plugins from
     
@@ -64,12 +70,17 @@ public class RubyBukkit extends JavaPlugin {
         if (debugInfo) {        
             log(INFO, "Ruby version set to " + rubyVersion);
         }
+        
+        if (RubyBukkit.container != null) {
+            log(SEVERE, "BUG: ruby container should be null");
+        }
 
         // register runtime and loader for Ruby plugins
-        if (!registerJRubyJar(jrubyJar)) {
+        if (!setupJRuby(jrubyJar)) {
             disableSelf();
             return;
         }
+        
         registerPluginLoader();
         
         // enumerate Ruby plugin files
@@ -80,6 +91,10 @@ public class RubyBukkit extends JavaPlugin {
     }
     
     public void onDisable() {
+        // TODO: unload the ruby plugins and JRuby
+        RubyBukkit.container.terminate();
+        RubyBukkit.container = null;
+        
         log(INFO, getDescription().getFullName() + " disabled.");
     }
 
@@ -110,7 +125,51 @@ public class RubyBukkit extends JavaPlugin {
     
     private void disableSelf() {
         getServer().getPluginManager().disablePlugin(this);
-    }    
+    }
+    
+    private boolean setupJRuby(File jrubyFile) {
+        if (!registerJRubyJar(jrubyFile)) {
+            return false;
+        }
+        ScriptingContainer container = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
+        
+        // speed !
+        // RubyMoon without JIT: 86 seconds
+        // RubyMoon with    JIT: 62 seconds
+        container.setCompileMode(CompileMode.JIT);
+        
+        container.setClassLoader(RubyPluginLoader.class.getClassLoader());
+        
+        // Setup load paths, the file: thing is for internal stuff like rubygems
+        String[] loadPaths = new String[] {
+            RubyBukkit.thisJar.getAbsolutePath(),
+            "file:" + jrubyFile.getAbsolutePath() + "!/META-INF/jruby.home/lib/ruby/site_ruby/" + rubyVersion,
+            "file:" + jrubyFile.getAbsolutePath() + "!/META-INF/jruby.home/lib/ruby/site_ruby/shared",
+            "file:" + jrubyFile.getAbsolutePath() + "!/META-INF/jruby.home/lib/ruby/" + rubyVersion
+        };
+        container.setLoadPaths(Arrays.asList(loadPaths));
+        
+        // Load this stuff once
+        String filename = "/rubybukkit/init-plugin.rb";
+        // run init script
+        InputStream script = getClass().getResourceAsStream(filename);
+        if (script == null)
+            return false;
+        try {
+            container.runScriptlet(script, filename);
+        } finally {
+            try {
+                script.close();
+            } catch (java.io.IOException e) {
+                log(SEVERE, "unable to close script IO");
+                return false;
+            }
+        }
+
+        RubyBukkit.container = container;
+
+        return true;
+    }
     
     private boolean registerJRubyJar(File jrubyFile) {
         try {
