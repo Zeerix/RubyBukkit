@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,10 +19,8 @@ import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.plugin.*;
 import org.bukkit.plugin.java.JavaPluginLoader;
-import org.jruby.CompatVersion;
 import org.jruby.RubySymbol;
 import org.jruby.embed.EmbedEvalUnit;
-import org.jruby.embed.LocalContextScope;
 import org.jruby.embed.PathType;
 import org.jruby.embed.ScriptingContainer;
 import org.yaml.snakeyaml.Yaml;
@@ -49,11 +46,7 @@ public final class RubyPluginLoader implements PluginLoader {
     
     private final Pattern[] fileFilters = new Pattern[] {
         Pattern.compile("\\.rb$"),
-    };
-
-    // script files
-    private final String initScript = "/rubybukkit/init-plugin.rb"; 
-    private final String createScript = "/rubybukkit/new-plugin.rb"; 
+    }; 
     
     // *** interface ***
     
@@ -69,21 +62,13 @@ public final class RubyPluginLoader implements PluginLoader {
     public Plugin loadPlugin(File file, boolean ignoreSoftDependencies) throws InvalidPluginException, InvalidDescriptionException, UnknownDependencyException {
         if (!file.exists()) {
             throw new InvalidPluginException(new FileNotFoundException(String.format("%s does not exist", file.getPath())));
-        }     
+        }
         
         // create a scripting container for every plugin to encapsulate it
-        ScriptingContainer runtime = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
-        runtime.setClassLoader(this.getClass().getClassLoader());
-        runtime.setHomeDirectory( RubyBukkit.jrubyJar.getAbsoluteFile().getParent() );
-        String[] loadPaths = new String[] { file.getAbsoluteFile().getParent(), RubyBukkit.thisJar.getAbsolutePath() };
-        runtime.setLoadPaths(Arrays.asList(loadPaths));
-        
-        if (RubyBukkit.rubyVersion.equals("1.9"))
-            runtime.setCompatVersion(CompatVersion.RUBY1_9);
+        ScriptingContainer runtime = RubyBukkit.container;
         
         try {
-            // run init script
-            runResourceScript(runtime, initScript);
+            
             
             final EmbedEvalUnit eval = runtime.parse(PathType.RELATIVE, file.getPath());
             /*IRubyObject res =*/ eval.run();
@@ -95,8 +80,8 @@ public final class RubyPluginLoader implements PluginLoader {
             
             final File dataFolder = new File(file.getParentFile(), description.getName());
             
-            // create instance of main class
-            RubyPlugin plugin = (RubyPlugin)runResourceScript(runtime, createScript);
+            RubyPlugin plugin = (RubyPlugin)runtime.runScriptlet(description.getMain() + ".new");
+            
             plugin.initialize(this, server, description, dataFolder, file, runtime);
             return plugin;
         } catch (InvalidDescriptionException e) {
@@ -104,20 +89,6 @@ public final class RubyPluginLoader implements PluginLoader {
         } catch (Exception e) {
             throw new InvalidPluginException(e);
         }
-    }
-    
-    /**
-     * execute Ruby script from resource (embedded in .jar) 
-     */
-    private Object runResourceScript(ScriptingContainer runtime, String filename) throws IOException {
-        InputStream script = getClass().getResourceAsStream(filename);
-        if (script == null)
-            throw new FileNotFoundException(filename);
-        try {
-            return runtime.runScriptlet(script, filename);
-        } finally {
-            script.close();
-        }        
     }
     
     /**
@@ -215,5 +186,5 @@ public final class RubyPluginLoader implements PluginLoader {
             // an abort is not possible the way it's currently written
             server.getPluginManager().callEvent(new PluginDisableEvent(plugin));
         }
-    }    
+    }
 }

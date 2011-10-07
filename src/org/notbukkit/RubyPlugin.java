@@ -17,6 +17,9 @@ import org.jruby.embed.ScriptingContainer;
 
 import com.avaje.ebean.EbeanServer;
 
+/*
+ * Ruby plugins inherit from that class.
+ */
 public class RubyPlugin implements Plugin {
     private boolean isEnabled = false;
     private boolean initialized = false;
