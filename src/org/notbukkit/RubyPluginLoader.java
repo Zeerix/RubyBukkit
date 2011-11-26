@@ -21,6 +21,7 @@ import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.plugin.*;
 import org.bukkit.plugin.java.JavaPluginLoader;
 import org.jruby.CompatVersion;
+import org.jruby.RubyInstanceConfig.CompileMode;
 import org.jruby.RubySymbol;
 import org.jruby.embed.EmbedEvalUnit;
 import org.jruby.embed.LocalContextScope;
@@ -73,9 +74,19 @@ public final class RubyPluginLoader implements PluginLoader {
         
         // create a scripting container for every plugin to encapsulate it
         ScriptingContainer runtime = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
-        runtime.setClassLoader(this.getClass().getClassLoader());
-        runtime.setHomeDirectory( RubyBukkit.jrubyJar.getAbsoluteFile().getParent() );
-        String[] loadPaths = new String[] { file.getAbsoluteFile().getParent(), RubyBukkit.thisJar.getAbsolutePath() };
+        
+        runtime.setCompileMode(CompileMode.JIT);
+        
+        runtime.setClassLoader(RubyPluginLoader.class.getClassLoader());
+        
+        // Setup load paths, the "file:" thing is for internal stuff like rubygems
+        String[] loadPaths = new String[] {
+            file.getAbsoluteFile().getParent(),
+            RubyBukkit.thisJar.getAbsolutePath(),
+            "file:" + RubyBukkit.jrubyJar.getAbsoluteFile() + "!/META_INF/jruby.home/lib/ruby/site_ruby/" + RubyBukkit.rubyVersion,
+            "file:" + RubyBukkit.jrubyJar.getAbsoluteFile() + "!/META_INF/jruby.home/lib/ruby/site_ruby/shared",
+            "file:" + RubyBukkit.jrubyJar.getAbsoluteFile() + "!/META_INF/jruby.home/lib/ruby/" + RubyBukkit.rubyVersion,
+        };
         runtime.setLoadPaths(Arrays.asList(loadPaths));
         
         if (RubyBukkit.rubyVersion.equals("1.9"))
@@ -97,6 +108,7 @@ public final class RubyPluginLoader implements PluginLoader {
             
             // create instance of main class
             RubyPlugin plugin = (RubyPlugin)runResourceScript(runtime, createScript);
+            
             plugin.initialize(this, server, description, dataFolder, file, runtime);
             return plugin;
         } catch (InvalidDescriptionException e) {
@@ -215,5 +227,5 @@ public final class RubyPluginLoader implements PluginLoader {
             // an abort is not possible the way it's currently written
             server.getPluginManager().callEvent(new PluginDisableEvent(plugin));
         }
-    }    
+    }
 }

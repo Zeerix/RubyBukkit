@@ -1,10 +1,16 @@
 package org.notbukkit;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.Event;
 import org.bukkit.event.Listener;
 import org.bukkit.generator.ChunkGenerator;
@@ -17,33 +23,38 @@ import org.jruby.embed.ScriptingContainer;
 
 import com.avaje.ebean.EbeanServer;
 
+/*
+ * Ruby plugins inherit from that class.
+ */
 public class RubyPlugin implements Plugin {
     private boolean isEnabled = false;
     private boolean initialized = false;
     private PluginLoader loader;
     private Server server;
-    PluginDescriptionFile description;
     private File pluginFile;
+    PluginDescriptionFile description;
     private File dataFolder;
-    private ScriptingContainer runtime;
     private Configuration config;
     private boolean naggable = true;
+    private FileConfiguration newConfig;
+    private File configFile;
+    
+    private ScriptingContainer runtime;
     
     public RubyPlugin() {}
     
     protected final void initialize(PluginLoader loader, Server server, PluginDescriptionFile description,
-            File dataFolder, File file, ScriptingContainer runtime) {
+            File dataFolder, File pluginFile, ScriptingContainer runtime) {
         if (!initialized) {
             this.initialized = true;
             this.loader = loader;
             this.server = server;
+            this.pluginFile = pluginFile;
             this.description = description;
             this.dataFolder = dataFolder;
-            this.pluginFile = file;
-            this.runtime = runtime;
+            this.configFile = new File(dataFolder, "config.yml");
             
-            this.config = new Configuration(new File(dataFolder, "config.yml"));
-            this.config.load();
+            this.runtime = runtime;
         }
     }
     
@@ -52,7 +63,39 @@ public class RubyPlugin implements Plugin {
     }    
     
     public Configuration getConfiguration() {
+        if (config == null) {
+            config = new Configuration(configFile);
+            config.load();
+        }
         return config;
+    }
+    
+    public FileConfiguration getConfig() {
+        if (newConfig == null) {
+            reloadConfig();
+        }
+        return newConfig;
+    }
+    
+    public void reloadConfig() {
+        newConfig = YamlConfiguration.loadConfiguration(configFile);
+        /*InputStream defConfigStream = getResource("config.yml");
+        if (defConfigStream != null) {
+            YamlConfiguration defConfig = YamlConfiguration.loadConfiguration(defConfigStream);
+            newConfig.setDefaults(defConfig);
+        }*/
+    }
+    
+    public void saveConfig() {
+        try {
+            newConfig.save(configFile);
+        } catch (IOException ex) {
+            Logger.getLogger(RubyPlugin.class.getName()).log(Level.SEVERE, "Could not save config to " + configFile, ex);
+        }
+    }
+    
+    public InputStream getResource(String filename) {
+        throw new java.lang.AbstractMethodError(RubyPlugin.class.getName() + ".getResource is not implemented.");
     }
 
     public File getDataFolder() {

@@ -9,12 +9,12 @@ import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.util.config.Configuration;
 
 /**
- * Loads Ruby plugins for Bukkit
+ * This is the Bukkit plugin that adds support for Ruby plugins
  *
  * @author Zeerix
  */
@@ -70,6 +70,7 @@ public class RubyBukkit extends JavaPlugin {
             disableSelf();
             return;
         }
+        
         registerPluginLoader();
         
         // enumerate Ruby plugin files
@@ -87,23 +88,29 @@ public class RubyBukkit extends JavaPlugin {
     
     private void loadConfig() {
         // load configuration
-        Configuration config = getConfiguration(); 
-        config.load();
+        FileConfiguration config = getConfig();
+        
+        // set defaults
+        config.options().copyDefaults(true);
+        config.addDefault("runtime.ruby-version", "1.8");
+        config.addDefault("runtime.jruby-path", getDataFolder() + File.separator + "jruby.jar");
+        config.addDefault("settings.plugins-path", getDataFolder().getPath());
+        config.addDefault("settings.debug", true);
 
         // Ruby version
-        rubyVersion = config.getString("runtime.ruby-version", "1.8");
+        rubyVersion = config.getString("runtime.ruby-version");
         if (!rubyVersion.equals("1.8") && !rubyVersion.equals("1.9")) {
             log(SEVERE, "Invalid Ruby version \"" + rubyVersion + "\". Possible values are \"1.8\" and \"1.9\".");
-            config.setProperty("runtime.ruby-version", rubyVersion = "1.8");
+            config.set("runtime.ruby-version", rubyVersion = "1.8");
         }
         
         // JRuby runtime
-        jrubyJar = new File(config.getString("runtime.jruby-path", getDataFolder() + File.separator + "jruby.jar"));
+        jrubyJar = new File(config.getString("runtime.jruby-path"));
         
         // plugin search path        
-        pluginsFolder = new File(config.getString("settings.plugins-path", getDataFolder().getPath()));
-        debugInfo = config.getBoolean("settings.debug", true);
-        config.save();
+        pluginsFolder = new File(config.getString("settings.plugins-path"));
+        debugInfo = config.getBoolean("settings.debug");
+        saveConfig();
     }
     
     // *** internals ***
