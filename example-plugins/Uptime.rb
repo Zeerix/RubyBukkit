@@ -2,15 +2,16 @@
 
 Plugin.is {
     name "Uptime"
-    version "0.2"
+    version "0.3"
     author "Zeerix"
     commands :uptime => {
         :usage => "/uptime - display time since server start or reload"
     }
+    permissions "rubybukkit.uptime" => {
+        :default => :op,
+        :description => "Allows use of /uptime command"
+    }
 }
-
-# use permission provider
-require 'lib/permissions'
 
 # plugin class
 class Uptime < RubyPlugin
@@ -22,15 +23,17 @@ class Uptime < RubyPlugin
     def onDisable; print uptimeString; end
     
     def onCommand(sender, command, label, args)
-        if !sender.isPlayer || sender.has("rubybukkit.uptime") then
+        if sender.hasPermission("rubybukkit.uptime") then
             sender.sendMessage uptimeString
+        else
+            sender.sendMessage "You don't have the permissions"
         end
         true
     end
 
     def time; java.lang.System.currentTimeMillis / 1000; end     
     def uptimeString
-		diff = time - @serverStart
-		"Uptime: #{diff / 86400}d #{diff / 3600 % 24}h #{diff / 60 % 60}m #{diff % 60}s"
+        diff = time - @serverStart
+        "Uptime: #{diff / 86400}d #{diff / 3600 % 24}h #{diff / 60 % 60}m #{diff % 60}s"
     end     
 end
