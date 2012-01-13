@@ -12,6 +12,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.Event;
+import org.bukkit.event.Event.Type;
 import org.bukkit.event.Listener;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.EventExecutor;
@@ -38,11 +39,12 @@ public class RubyPlugin implements Plugin {
     private boolean naggable = true;
     private FileConfiguration newConfig;
     private File configFile;
-    
+    private long[] timings = new long[Event.Type.values().length];
+
     private ScriptingContainer runtime;
-    
+
     public RubyPlugin() {}
-    
+
     protected final void initialize(PluginLoader loader, Server server, PluginDescriptionFile description,
             File dataFolder, File pluginFile, ScriptingContainer runtime) {
         if (!initialized) {
@@ -53,15 +55,15 @@ public class RubyPlugin implements Plugin {
             this.description = description;
             this.dataFolder = dataFolder;
             this.configFile = new File(dataFolder, "config.yml");
-            
+
             this.runtime = runtime;
         }
     }
-    
+
     protected final ScriptingContainer getRuntime() {
         return runtime;
-    }    
-    
+    }
+
     public Configuration getConfiguration() {
         if (config == null) {
             config = new Configuration(configFile);
@@ -69,23 +71,18 @@ public class RubyPlugin implements Plugin {
         }
         return config;
     }
-    
+
     public FileConfiguration getConfig() {
         if (newConfig == null) {
             reloadConfig();
         }
         return newConfig;
     }
-    
+
     public void reloadConfig() {
         newConfig = YamlConfiguration.loadConfiguration(configFile);
-        /*InputStream defConfigStream = getResource("config.yml");
-        if (defConfigStream != null) {
-            YamlConfiguration defConfig = YamlConfiguration.loadConfiguration(defConfigStream);
-            newConfig.setDefaults(defConfig);
-        }*/
     }
-    
+
     public void saveConfig() {
         try {
             newConfig.save(configFile);
@@ -93,7 +90,20 @@ public class RubyPlugin implements Plugin {
             Logger.getLogger(RubyPlugin.class.getName()).log(Level.SEVERE, "Could not save config to " + configFile, ex);
         }
     }
-    
+
+    public void saveDefaultConfig() {
+        try {
+            getConfig().save(configFile);
+        } catch (IOException ex) {
+            Logger.getLogger(RubyPlugin.class.getName()).log(Level.SEVERE, "Could not save config to " + configFile, ex);
+        }
+    }
+
+    public void saveResource(String resourcePath, boolean replace) {
+        throw new java.lang.AbstractMethodError(RubyPlugin.class.getName() + ".saveResource is not implemented.");
+
+    }
+
     public InputStream getResource(String filename) {
         throw new java.lang.AbstractMethodError(RubyPlugin.class.getName() + ".getResource is not implemented.");
     }
@@ -105,7 +115,7 @@ public class RubyPlugin implements Plugin {
     public EbeanServer getDatabase() {
         return null;
     }
-    
+
     protected File getFile() {
         return pluginFile;
     }
@@ -121,16 +131,16 @@ public class RubyPlugin implements Plugin {
     public final Server getServer() {
         return server;
     }
-    
+
     public ChunkGenerator getDefaultWorldGenerator(String worldName, String id) {
         getServer().getLogger().severe("Plugin " + getDescription().getFullName() + " does not contain any generators that may be used in the default world!");
         return null;
     }
-    
+
     public final boolean isNaggable() {
         return naggable;
     }
-    
+
     public final void setNaggable(boolean canNag) {
         naggable = canNag;
     }
@@ -146,39 +156,53 @@ public class RubyPlugin implements Plugin {
             }
         }
     }
-    
+
     public final boolean isEnabled() {
         return isEnabled;
     }
-    
-    // *** callback methods for the implementation plugin ***    
+
+    // *** new timing methods ***
+
+    public long getTiming(Event.Type type) {
+        return timings[type.ordinal()];
+    }
+
+    public void incTiming(Event.Type type, long delta) {
+        timings[type.ordinal()] += delta;
+    }
+
+    public void resetTimings() {
+        timings = new long[timings.length];
+    }
+
+    // *** callback methods for the implementation plugin ***
 
     public void onLoad() {
     }
 
     public void onEnable() {
     }
-        
+
     public void onDisable() {
     }
-    
+
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         return false;
     }
-    
+
     /*
      * Ruby convenience methods: Registering events
-     * 
+     *
      * Ruby example:
      *    registerEvent(Event::Type::PLAYER_LOGIN, Event::Priority::Normal) {
      *       |loginEvent|
-     *       player = loginEvent.getPlayer    
+     *       player = loginEvent.getPlayer
      *       scheduleSyncTask { listPlayersTo player }
      *    }
-     * 
+     *
      * @listener: An instance of RubyListener or a Ruby Proc
      */
-    
+
     public interface RubyListener extends Listener {
         void onEvent(Event event);
     }
@@ -187,21 +211,21 @@ public class RubyPlugin implements Plugin {
             ((RubyListener) listener).onEvent(event);
         }
     }
-    
+
     protected void registerRubyBlock(Event.Type type, Event.Priority priority, RubyListener listener) {
         getServer().getPluginManager().registerEvent(type, listener, new RubyExecutor(), priority, this);
     }
-    
+
     /*
      * Ruby convenience methods: Scheduler
      * These methods call the corresponding methods in the Bukkit scheduler
-     * 
+     *
      * Ruby example:
      *    plugin.scheduleSyncRepeatingTask(delay, period) { print "Hallo Welt!" }
-     * 
+     *
      * @delay, period: Time units are server ticks
      */
-    
+
     public int scheduleSyncTask(Runnable task) {
         return getServer().getScheduler().scheduleSyncDelayedTask(this, task);
     }
@@ -221,9 +245,9 @@ public class RubyPlugin implements Plugin {
     public int scheduleAsyncRepeatingTask(long delay, long period, Runnable task) {
         return getServer().getScheduler().scheduleAsyncRepeatingTask(this, task, delay, period);
     }
-    
+
     public void cancelTask(int taskId) {
-        getServer().getScheduler().cancelTask(taskId);        
+        getServer().getScheduler().cancelTask(taskId);
     }
     public void cancelTasks() {
         getServer().getScheduler().cancelTasks(this);
