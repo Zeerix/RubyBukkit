@@ -2,7 +2,7 @@
 
 Plugin.is {
     name "OnlinePlayers"
-    version "0.3"
+    version "0.4"
     author "Zeerix"
     description "Displays list of online players on login and by a command"
     commands :list => {
@@ -13,7 +13,7 @@ Plugin.is {
 }
 
 # imports
-import 'org.bukkit.event.Event'
+import 'org.bukkit.event.player.PlayerLoginEvent'
 
 # plugin class
 class OnlinePlayers < RubyPlugin
@@ -26,10 +26,16 @@ class OnlinePlayers < RubyPlugin
     end
     
     def registerEvents
-        registerEvent(Event::Type::PLAYER_LOGIN, Event::Priority::Normal) {
+        # registerEvent(PlayerLoginEvent, :Normal)
+        # -or-
+        # registerEvent(:PlayerLogin, :Normal)
+    
+        registerEvent(:PlayerLogin, :Normal) {
             |loginEvent|
             player = loginEvent.getPlayer    
-            scheduleSyncTask { listPlayersTo player }
+            scheduleSyncTask {
+                listPlayersTo player
+            }
         }
     end
     
