@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -13,6 +14,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.Event;
 import org.bukkit.event.Event.Type;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.EventExecutor;
@@ -21,6 +23,7 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginLoader;
 import org.bukkit.plugin.PluginLogger;
 import org.bukkit.util.config.Configuration;
+import org.jruby.RubyClass;
 import org.jruby.embed.ScriptingContainer;
 
 import com.avaje.ebean.EbeanServer;
@@ -226,7 +229,16 @@ public class RubyPlugin implements Plugin {
     }
 
     protected void registerRubyBlock(Event.Type type, Event.Priority priority, RubyListener listener) {
-        getServer().getPluginManager().registerEvent(type, listener, new RubyExecutor(), priority, this);
+        Bukkit.getPluginManager().registerEvent(type, listener, new RubyExecutor(), priority, this);
+    }
+
+    protected void registerRubyBlock(Class<? extends Event> type, EventPriority priority, RubyListener listener) {
+        Bukkit.getPluginManager().registerEvent(type, listener, priority, new RubyExecutor(), this);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected void registerRubyBlock(RubyClass rubyClass, EventPriority priority, RubyListener listener) {
+        registerRubyBlock(rubyClass.getReifiedClass(), priority, listener);
     }
 
     /*
@@ -240,29 +252,29 @@ public class RubyPlugin implements Plugin {
      */
 
     public int scheduleSyncTask(Runnable task) {
-        return getServer().getScheduler().scheduleSyncDelayedTask(this, task);
+        return Bukkit.getScheduler().scheduleSyncDelayedTask(this, task);
     }
     public int scheduleSyncDelayedTask(long delay, Runnable task) {
-        return getServer().getScheduler().scheduleSyncDelayedTask(this, task, delay);
+        return Bukkit.getScheduler().scheduleSyncDelayedTask(this, task, delay);
     }
     public int scheduleSyncRepeatingTask(long delay, long period, Runnable task) {
-        return getServer().getScheduler().scheduleSyncRepeatingTask(this, task, delay, period);
+        return Bukkit.getScheduler().scheduleSyncRepeatingTask(this, task, delay, period);
     }
 
     public int scheduleAsyncTask(Runnable task) {
-        return getServer().getScheduler().scheduleAsyncDelayedTask(this, task);
+        return Bukkit.getScheduler().scheduleAsyncDelayedTask(this, task);
     }
     public int scheduleAsyncDelayedTask(long delay, Runnable task) {
-        return getServer().getScheduler().scheduleAsyncDelayedTask(this, task, delay);
+        return Bukkit.getScheduler().scheduleAsyncDelayedTask(this, task, delay);
     }
     public int scheduleAsyncRepeatingTask(long delay, long period, Runnable task) {
-        return getServer().getScheduler().scheduleAsyncRepeatingTask(this, task, delay, period);
+        return Bukkit.getScheduler().scheduleAsyncRepeatingTask(this, task, delay, period);
     }
 
     public void cancelTask(int taskId) {
-        getServer().getScheduler().cancelTask(taskId);
+        Bukkit.getScheduler().cancelTask(taskId);
     }
     public void cancelTasks() {
-        getServer().getScheduler().cancelTasks(this);
+        Bukkit.getScheduler().cancelTasks(this);
     }
 }
