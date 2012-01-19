@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
@@ -189,6 +190,11 @@ public final class RubyPluginLoader implements PluginLoader {
 
     public EventExecutor createExecutor(Event.Type type, Listener listener) {
         return javaPluginLoader.createExecutor(type, listener);     // delegate
+    }
+
+    public Map<Class<? extends Event>, Set<RegisteredListener>> createRegisteredListeners(Listener listener, Plugin plugin) {
+        Map<Class<? extends Event>, Set<RegisteredListener>> result = new HashMap<Class<? extends Event>, Set<RegisteredListener>>();
+        return result;  // no annotation based registering for Ruby plugins yet
     }
 
     public void enablePlugin(Plugin plugin) {

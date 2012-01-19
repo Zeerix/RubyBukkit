@@ -19,6 +19,7 @@ import org.bukkit.plugin.EventExecutor;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginLoader;
+import org.bukkit.plugin.PluginLogger;
 import org.bukkit.util.config.Configuration;
 import org.jruby.embed.ScriptingContainer;
 
@@ -40,6 +41,7 @@ public class RubyPlugin implements Plugin {
     private FileConfiguration newConfig;
     private File configFile;
     private long[] timings = new long[Event.Type.values().length];
+    private PluginLogger logger = null;
 
     private ScriptingContainer runtime;
 
@@ -159,6 +161,17 @@ public class RubyPlugin implements Plugin {
 
     public final boolean isEnabled() {
         return isEnabled;
+    }
+
+    public Logger getLogger() {
+        if (logger == null) {
+            logger = new PluginLogger(this);
+        }
+        return logger;
+    }
+
+    public String toString() {
+        return getDescription().getFullName();
     }
 
     // *** new timing methods ***
