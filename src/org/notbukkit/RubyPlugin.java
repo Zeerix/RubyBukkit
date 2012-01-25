@@ -13,7 +13,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.Event;
-import org.bukkit.event.Event.Type;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.generator.ChunkGenerator;
@@ -43,7 +42,6 @@ public class RubyPlugin implements Plugin {
     private boolean naggable = true;
     private FileConfiguration newConfig;
     private File configFile;
-    private long[] timings = new long[Event.Type.values().length];
     private PluginLogger logger = null;
 
     private ScriptingContainer runtime;
@@ -69,6 +67,7 @@ public class RubyPlugin implements Plugin {
         return runtime;
     }
 
+    @Deprecated
     public Configuration getConfiguration() {
         if (config == null) {
             config = new Configuration(configFile);
@@ -177,20 +176,6 @@ public class RubyPlugin implements Plugin {
         return getDescription().getFullName();
     }
 
-    // *** new timing methods ***
-
-    public long getTiming(Event.Type type) {
-        return timings[type.ordinal()];
-    }
-
-    public void incTiming(Event.Type type, long delta) {
-        timings[type.ordinal()] += delta;
-    }
-
-    public void resetTimings() {
-        timings = new long[timings.length];
-    }
-
     // *** callback methods for the implementation plugin ***
 
     public void onLoad() {
@@ -228,6 +213,7 @@ public class RubyPlugin implements Plugin {
         }
     }
 
+    @Deprecated
     protected void registerRubyBlock(Event.Type type, Event.Priority priority, RubyListener listener) {
         Bukkit.getPluginManager().registerEvent(type, listener, new RubyExecutor(), priority, this);
     }

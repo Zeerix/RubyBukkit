@@ -7,11 +7,13 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import static java.util.logging.Level.INFO;
+import static java.util.logging.Level.SEVERE;
 
 /**
  * This is the Bukkit plugin that adds support for Ruby plugins
@@ -22,17 +24,11 @@ public class RubyBukkit extends JavaPlugin {
 
     // *** logging ***
 
-    private final Level INFO = Level.INFO;
-    private final Level SEVERE = Level.SEVERE;
-
-    private Logger log;
-    private String logPrefix = "";
-
     private void log(Level level, String msg, Throwable ex) {
-        log.log(level, logPrefix + msg, ex);
+        getLogger().log(level, msg, ex);
     }
     private void log(Level level, String msg) {
-        log.log(level, logPrefix + msg);
+        getLogger().log(level, msg);
     }
 
     // *** plugin configuration ***
@@ -47,17 +43,11 @@ public class RubyBukkit extends JavaPlugin {
     // *** public interface ***
 
     public void onLoad() {
-        // initialize logging
-        log = Logger.getLogger(getDescription().getName());
-        logPrefix = "[" + getDescription().getName() + "] ";
-
         // store jar path for plugin loader
         thisJar = this.getFile();
     }
 
     public void onEnable() {
-        log(INFO, getDescription().getFullName() + " enabled.");
-
         loadConfig();
 
         // debug output
@@ -81,7 +71,6 @@ public class RubyBukkit extends JavaPlugin {
     }
 
     public void onDisable() {
-        log(INFO, getDescription().getFullName() + " disabled.");
     }
 
     // *** configuration ***

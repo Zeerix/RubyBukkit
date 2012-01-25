@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.Validate;
 import org.bukkit.Server;
 import org.bukkit.event.Event;
 import org.bukkit.event.Listener;
@@ -69,30 +70,13 @@ public final class RubyPluginLoader implements PluginLoader {
     }
 
     public Plugin loadPlugin(File file, boolean ignoreSoftDependencies) throws InvalidPluginException, InvalidDescriptionException, UnknownDependencyException {
+        Validate.notNull(file, "File cannot be null");
         if (!file.exists()) {
             throw new InvalidPluginException(new FileNotFoundException(String.format("%s does not exist", file.getPath())));
         }
 
         // create a scripting container for every plugin to encapsulate it
-        ScriptingContainer runtime = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
-
-        runtime.setCompileMode(CompileMode.JIT);
-
-        runtime.setClassLoader(RubyPluginLoader.class.getClassLoader());
-
-        // Setup load paths, the "file:" thing is for internal stuff like rubygems
-        String[] loadPaths = new String[] {
-            file.getAbsoluteFile().getParent(),
-            RubyBukkit.thisJar.getAbsolutePath(),
-            "file:" + RubyBukkit.jrubyJar.getAbsoluteFile() + "!/META_INF/jruby.home/lib/ruby/site_ruby/" + RubyBukkit.rubyVersion,
-            "file:" + RubyBukkit.jrubyJar.getAbsoluteFile() + "!/META_INF/jruby.home/lib/ruby/site_ruby/shared",
-            "file:" + RubyBukkit.jrubyJar.getAbsoluteFile() + "!/META_INF/jruby.home/lib/ruby/" + RubyBukkit.rubyVersion,
-        };
-        runtime.setLoadPaths(Arrays.asList(loadPaths));
-
-        if (RubyBukkit.rubyVersion.equals("1.9"))
-            runtime.setCompatVersion(CompatVersion.RUBY1_9);
-
+        ScriptingContainer runtime = setupScriptingContainer(file);
         try {
             // run init script
             runResourceScript(runtime, initScript);
@@ -120,6 +104,32 @@ public final class RubyPluginLoader implements PluginLoader {
     }
 
     /**
+     * create and setup ScriptingContainer
+     */
+    private ScriptingContainer setupScriptingContainer(File file) {
+        ScriptingContainer runtime = new ScriptingContainer(LocalContextScope.SINGLETHREAD);
+
+        runtime.setCompileMode(CompileMode.JIT);
+
+        runtime.setClassLoader(RubyPluginLoader.class.getClassLoader());
+
+        // Setup load paths, the "file:" thing is for internal stuff like rubygems
+        String[] loadPaths = new String[] {
+            file.getAbsoluteFile().getParent(),
+            RubyBukkit.thisJar.getAbsolutePath(),
+            "file:" + RubyBukkit.jrubyJar.getAbsoluteFile() + "!/META_INF/jruby.home/lib/ruby/site_ruby/" + RubyBukkit.rubyVersion,
+            "file:" + RubyBukkit.jrubyJar.getAbsoluteFile() + "!/META_INF/jruby.home/lib/ruby/site_ruby/shared",
+            "file:" + RubyBukkit.jrubyJar.getAbsoluteFile() + "!/META_INF/jruby.home/lib/ruby/" + RubyBukkit.rubyVersion,
+        };
+        runtime.setLoadPaths(Arrays.asList(loadPaths));
+
+        if (RubyBukkit.rubyVersion.equals("1.9"))
+            runtime.setCompatVersion(CompatVersion.RUBY1_9);
+
+        return runtime;
+    }
+
+    /**
      * execute Ruby script from resource (embedded in .jar)
      */
     private Object runResourceScript(ScriptingContainer runtime, String filename) throws IOException {
@@ -133,18 +143,42 @@ public final class RubyPluginLoader implements PluginLoader {
         }
     }
 
+    public PluginDescriptionFile getPluginDescription(File file) throws InvalidPluginException, InvalidDescriptionException {
+        Validate.notNull(file, "File cannot be null");
+        if (!file.exists()) {
+            throw new InvalidPluginException(new FileNotFoundException(String.format("%s does not exist", file.getPath())));
+        }
+
+        ScriptingContainer runtime = setupScriptingContainer(file);
+        try {
+            // run init script
+            runResourceScript(runtime, initScript);
+
+            final EmbedEvalUnit eval = runtime.parse(PathType.RELATIVE, file.getPath());
+            /*IRubyObject res =*/ eval.run();
+
+            return getDescriptionFile(runtime);
+
+        } catch (InvalidDescriptionException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InvalidPluginException(e);
+        }
+    }
+
     /**
      * extract description from Ruby script
      * "Plugin.getDescription" will return our map
      */
     private PluginDescriptionFile getDescriptionFile(ScriptingContainer runtime) throws InvalidDescriptionException {
         Object desc = convertFromRuby(runtime.runScriptlet("Plugin.getDescription"));
-        if (desc instanceof Map) {
-            final Yaml yaml = new Yaml(new SafeConstructor());
-            final StringReader reader = new StringReader( yaml.dump(desc) );
-            return new PluginDescriptionFile(reader);
+        if (!(desc instanceof Map)) {
+            throw new InvalidDescriptionException("Plugin.getDescription must return a Map");
         }
-        return null;
+
+        final Yaml yaml = new Yaml(new SafeConstructor());
+        final StringReader reader = new StringReader( yaml.dump(desc) );
+        return new PluginDescriptionFile(reader);
     }
 
     private static Object convertFromRuby(Object object) throws InvalidDescriptionException {
@@ -188,6 +222,7 @@ public final class RubyPluginLoader implements PluginLoader {
         return fileFilters;
     }
 
+    @Deprecated
     public EventExecutor createExecutor(Event.Type type, Listener listener) {
         return javaPluginLoader.createExecutor(type, listener);     // delegate
     }
@@ -198,11 +233,12 @@ public final class RubyPluginLoader implements PluginLoader {
     }
 
     public void enablePlugin(Plugin plugin) {
-        if (!(plugin instanceof RubyPlugin)) {
-            throw new IllegalArgumentException("Plugin is not associated with this PluginLoader");
-        }
+        Validate.isTrue(plugin instanceof RubyPlugin, "Plugin is not associated with this PluginLoader");
 
         if (!plugin.isEnabled()) {
+            String message = String.format("[%s] Loading %s.", plugin.getDescription().getName(), plugin.getDescription().getFullName());
+            server.getLogger().info(message);
+
             try {
                 RubyPlugin rPlugin = (RubyPlugin)plugin;
                 rPlugin.setEnabled(true);
@@ -217,11 +253,12 @@ public final class RubyPluginLoader implements PluginLoader {
     }
 
     public void disablePlugin(Plugin plugin) {
-        if (!(plugin instanceof RubyPlugin)) {
-            throw new IllegalArgumentException("Plugin is not associated with this PluginLoader");
-        }
+        Validate.isTrue(plugin instanceof RubyPlugin, "Plugin is not associated with this PluginLoader");
 
         if (plugin.isEnabled()) {
+            String message = String.format("[%s] Unloading %s.", plugin.getDescription().getName(), plugin.getDescription().getFullName());
+            server.getLogger().info(message);
+
             try {
                 RubyPlugin rPlugin = (RubyPlugin)plugin;
                 rPlugin.setEnabled(false);
