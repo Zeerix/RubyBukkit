@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +22,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.plugin.*;
-import org.bukkit.plugin.java.JavaPluginLoader;
 import org.jruby.CompatVersion;
 import org.jruby.RubyInstanceConfig.CompileMode;
 import org.jruby.RubySymbol;
@@ -45,7 +45,6 @@ public final class RubyPluginLoader implements PluginLoader {
 
     // *** referenced classes ***
 
-    private final JavaPluginLoader javaPluginLoader;    // for createExecutor
     private final Server server;
 
     // *** data ***
@@ -62,14 +61,14 @@ public final class RubyPluginLoader implements PluginLoader {
 
     public RubyPluginLoader(Server server) {
         this.server = server;
-        javaPluginLoader = new JavaPluginLoader(server);
     }
 
-    public Plugin loadPlugin(File file) throws InvalidPluginException, InvalidDescriptionException, UnknownDependencyException {
+    @Override
+    public Plugin loadPlugin(File file) throws InvalidPluginException, UnknownDependencyException {
         return loadPlugin(file, false);
     }
 
-    public Plugin loadPlugin(File file, boolean ignoreSoftDependencies) throws InvalidPluginException, InvalidDescriptionException, UnknownDependencyException {
+    public Plugin loadPlugin(File file, boolean ignoreSoftDependencies) throws InvalidPluginException, UnknownDependencyException {
         Validate.notNull(file, "File cannot be null");
         if (!file.exists()) {
             throw new InvalidPluginException(new FileNotFoundException(String.format("%s does not exist", file.getPath())));
@@ -96,8 +95,6 @@ public final class RubyPluginLoader implements PluginLoader {
 
             plugin.initialize(this, server, description, dataFolder, file, runtime);
             return plugin;
-        } catch (InvalidDescriptionException e) {
-            throw e;
         } catch (Exception e) {
             throw new InvalidPluginException(e);
         }
@@ -143,10 +140,11 @@ public final class RubyPluginLoader implements PluginLoader {
         }
     }
 
-    public PluginDescriptionFile getPluginDescription(File file) throws InvalidPluginException, InvalidDescriptionException {
+    @Override
+    public PluginDescriptionFile getPluginDescription(File file) throws InvalidDescriptionException {
         Validate.notNull(file, "File cannot be null");
         if (!file.exists()) {
-            throw new InvalidPluginException(new FileNotFoundException(String.format("%s does not exist", file.getPath())));
+            throw new InvalidDescriptionException(new FileNotFoundException(String.format("%s does not exist", file.getPath())));
         }
 
         ScriptingContainer runtime = setupScriptingContainer(file);
@@ -159,10 +157,8 @@ public final class RubyPluginLoader implements PluginLoader {
 
             return getDescriptionFile(runtime);
 
-        } catch (InvalidDescriptionException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new InvalidPluginException(e);
+        } catch (IOException e) {
+            throw new InvalidDescriptionException(e);
         }
     }
 
@@ -218,20 +214,17 @@ public final class RubyPluginLoader implements PluginLoader {
         return result;
     }
 
+    @Override
     public Pattern[] getPluginFileFilters() {
         return fileFilters;
     }
 
-    @Deprecated
-    public EventExecutor createExecutor(Event.Type type, Listener listener) {
-        return javaPluginLoader.createExecutor(type, listener);     // delegate
-    }
-
+    @Override
     public Map<Class<? extends Event>, Set<RegisteredListener>> createRegisteredListeners(Listener listener, Plugin plugin) {
-        Map<Class<? extends Event>, Set<RegisteredListener>> result = new HashMap<Class<? extends Event>, Set<RegisteredListener>>();
-        return result;  // no annotation based registering for Ruby plugins yet
+        return Collections.emptyMap();  // no annotation based registering for Ruby plugins yet
     }
 
+    @Override
     public void enablePlugin(Plugin plugin) {
         Validate.isTrue(plugin instanceof RubyPlugin, "Plugin is not associated with this PluginLoader");
 
@@ -252,6 +245,7 @@ public final class RubyPluginLoader implements PluginLoader {
         }
     }
 
+    @Override
     public void disablePlugin(Plugin plugin) {
         Validate.isTrue(plugin instanceof RubyPlugin, "Plugin is not associated with this PluginLoader");
 

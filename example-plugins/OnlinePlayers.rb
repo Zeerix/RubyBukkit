@@ -2,7 +2,7 @@
 
 Plugin.is {
     name "OnlinePlayers"
-    version "0.4"
+    version "0.5"
     author "Zeerix"
     description "Displays list of online players on login and by a command"
     commands :list => {
@@ -26,11 +26,7 @@ class OnlinePlayers < RubyPlugin
     end
     
     def registerEvents
-        # registerEvent(PlayerLoginEvent, :Normal)
-        # -or-
-        # registerEvent(:PlayerLogin, :Normal)
-    
-        registerEvent(:PlayerLogin, :Normal) {
+        registerEvent(PlayerLoginEvent, :Normal) {
             |loginEvent|
             player = loginEvent.getPlayer    
             scheduleSyncTask {

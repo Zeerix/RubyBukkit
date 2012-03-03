@@ -17,10 +17,10 @@ class RubyPlugin
         type = type.to_s if type.is_a?(Symbol)
         prio = prio.to_s if prio.is_a?(Symbol)
         
-        type = matchToEnum(type, org.bukkit.event.Event::Type) if type.is_a?(String)
+        #type = matchToEnum(type, org.bukkit.event.Event::Type) if type.is_a?(String)
         prio = matchToEnum(prio, org.bukkit.event.EventPriority) if prio.is_a?(String)
 
-        type = type.getEventClass if type.respond_to?(:getEventClass)
+        #type = type.getEventClass if type.respond_to?(:getEventClass)
         prio = prio.getNewPriority if prio.respond_to?(:getNewPriority)
         
         registerRubyBlock(type, prio, &listener)

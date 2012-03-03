@@ -2,9 +2,11 @@
 
 Plugin.is {
     name "LockDay"
-    version "0.1"
+    version "0.2"
     author "Zeerix"
 }
+
+import 'org.bukkit.event.player.PlayerLoginEvent'
 
 class LockDay < RubyPlugin
     def onEnable
@@ -13,7 +15,7 @@ class LockDay < RubyPlugin
             lockTime player
         }
 
-        registerEvent(:PlayerLogin, :Normal) {
+        registerEvent(PlayerLoginEvent, :Normal) {
             |login|
             lockTime login.player    
         }

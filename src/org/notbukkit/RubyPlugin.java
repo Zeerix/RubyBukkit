@@ -21,7 +21,6 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginLoader;
 import org.bukkit.plugin.PluginLogger;
-import org.bukkit.util.config.Configuration;
 import org.jruby.RubyClass;
 import org.jruby.embed.ScriptingContainer;
 
@@ -38,7 +37,6 @@ public class RubyPlugin implements Plugin {
     private File pluginFile;
     PluginDescriptionFile description;
     private File dataFolder;
-    private Configuration config;
     private boolean naggable = true;
     private FileConfiguration newConfig;
     private File configFile;
@@ -67,15 +65,7 @@ public class RubyPlugin implements Plugin {
         return runtime;
     }
 
-    @Deprecated
-    public Configuration getConfiguration() {
-        if (config == null) {
-            config = new Configuration(configFile);
-            config.load();
-        }
-        return config;
-    }
-
+    @Override
     public FileConfiguration getConfig() {
         if (newConfig == null) {
             reloadConfig();
@@ -83,10 +73,12 @@ public class RubyPlugin implements Plugin {
         return newConfig;
     }
 
+    @Override
     public void reloadConfig() {
         newConfig = YamlConfiguration.loadConfiguration(configFile);
     }
 
+    @Override
     public void saveConfig() {
         try {
             newConfig.save(configFile);
@@ -95,6 +87,7 @@ public class RubyPlugin implements Plugin {
         }
     }
 
+    @Override
     public void saveDefaultConfig() {
         try {
             getConfig().save(configFile);
@@ -103,19 +96,23 @@ public class RubyPlugin implements Plugin {
         }
     }
 
+    @Override
     public void saveResource(String resourcePath, boolean replace) {
         throw new java.lang.AbstractMethodError(RubyPlugin.class.getName() + ".saveResource is not implemented.");
 
     }
 
+    @Override
     public InputStream getResource(String filename) {
         throw new java.lang.AbstractMethodError(RubyPlugin.class.getName() + ".getResource is not implemented.");
     }
 
+    @Override
     public File getDataFolder() {
         return dataFolder;
     }
 
+    @Override
     public EbeanServer getDatabase() {
         return null;
     }
@@ -124,27 +121,33 @@ public class RubyPlugin implements Plugin {
         return pluginFile;
     }
 
+    @Override
     public PluginDescriptionFile getDescription() {
         return description;
     }
 
+    @Override
     public final PluginLoader getPluginLoader() {
         return loader;
     }
 
+    @Override
     public final Server getServer() {
         return server;
     }
 
+    @Override
     public ChunkGenerator getDefaultWorldGenerator(String worldName, String id) {
         getServer().getLogger().severe("Plugin " + getDescription().getFullName() + " does not contain any generators that may be used in the default world!");
         return null;
     }
 
+    @Override
     public final boolean isNaggable() {
         return naggable;
     }
 
+    @Override
     public final void setNaggable(boolean canNag) {
         naggable = canNag;
     }
@@ -161,10 +164,12 @@ public class RubyPlugin implements Plugin {
         }
     }
 
+    @Override
     public final boolean isEnabled() {
         return isEnabled;
     }
 
+    @Override
     public Logger getLogger() {
         if (logger == null) {
             logger = new PluginLogger(this);
@@ -172,18 +177,41 @@ public class RubyPlugin implements Plugin {
         return logger;
     }
 
+    @Override
+    public String getName() {
+        return getDescription().getName();
+    }
+
+    @Override
     public String toString() {
         return getDescription().getFullName();
     }
 
+    @Override
+    public final int hashCode() {
+        return getName().hashCode();
+    }
+
+    @Override
+    public final boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        return (obj instanceof Plugin) && getName().equals(((Plugin) obj).getName());
+    }
+
     // *** callback methods for the implementation plugin ***
 
+    @Override
     public void onLoad() {
     }
 
+    @Override
     public void onEnable() {
     }
 
+    @Override
     public void onDisable() {
     }
 
@@ -211,11 +239,6 @@ public class RubyPlugin implements Plugin {
         public void execute(Listener listener, Event event) {
             ((RubyListener) listener).onEvent(event);
         }
-    }
-
-    @Deprecated
-    protected void registerRubyBlock(Event.Type type, Event.Priority priority, RubyListener listener) {
-        Bukkit.getPluginManager().registerEvent(type, listener, new RubyExecutor(), priority, this);
     }
 
     protected void registerRubyBlock(Class<? extends Event> type, EventPriority priority, RubyListener listener) {
