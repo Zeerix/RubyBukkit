@@ -25,6 +25,7 @@ import org.jruby.RubyClass;
 import org.jruby.embed.ScriptingContainer;
 
 import com.avaje.ebean.EbeanServer;
+import java.util.List;
 
 /*
  * Ruby plugins inherit from that class.
@@ -217,6 +218,10 @@ public class RubyPlugin implements Plugin {
 
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         return false;
+    }
+
+    public List<String> onTabComplete(CommandSender cs, Command cmnd, String string, String[] strings) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     /*
