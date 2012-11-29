@@ -25,6 +25,7 @@ import org.jruby.RubyClass;
 import org.jruby.embed.ScriptingContainer;
 
 import com.avaje.ebean.EbeanServer;
+import java.util.ArrayList;
 import java.util.List;
 
 /*
@@ -221,7 +222,7 @@ public class RubyPlugin implements Plugin {
     }
 
     public List<String> onTabComplete(CommandSender cs, Command cmnd, String string, String[] strings) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return new ArrayList<String>();
     }
 
     /*
